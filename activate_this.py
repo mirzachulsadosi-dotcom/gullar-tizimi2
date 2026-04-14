@@ -1,8 +1,9 @@
-import logging, sqlite3, qrcode, io, json, asyncio
-from aiogram import Bot, Dispatcher, types
+import asyncio
+import logging
+from aiogram import Bot, Dispatcher, types, F
 from aiogram.fsm.context import FSMContext
-from aiogram.dispatcher.filters.state import State, StatesGroup
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from aiogram.fsm.storage.memory import MemoryStorage
+# Agar kodingizda boshqa maxsus importlar bo'lsa, ularni ham tekshiring
 from aiogram.types import WebAppInfo, ReplyKeyboardMarkup, KeyboardButton, ContentType
 
 API_TOKEN = '8735925686:AAHnUxY2me2v7bO_NfJST_2jAIeSuNHKT3Y'
