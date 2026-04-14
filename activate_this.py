@@ -156,17 +156,17 @@ async def process_photo(message: types.Message, state: FSMContext):
     await message.answer_photo(BufferedInputFile(buf.read(), filename="qr.png"), caption=f"✅ Saqlandi! ID: {new_id}")
     await state.clear()
 
-# Koddagi yozuv aynan shunday bo'lishi kerak:
 @dp.message(F.text == "📋 Barcha gullar")
 async def list_all_flowers(message: types.Message):
-    if message.from_user.id != ADMIN_ID: 
-        return # Agar Admin bo'lmasangiz bot javob bermaydi
+    if message.from_user.id != ADMIN_ID:
+        return await message.answer("Siz admin emassiz!")
     
     cursor.execute("SELECT id, name, r_name, r_phone, days FROM flowers")
     rows = cursor.fetchall()
     
     if not rows:
-        return await message.answer("Hozircha bazada gullar yo'q.")
+        # Agar baza bo'sh bo'lsa, bot shuni aytadi
+        return await message.answer("Bazadan gullar topilmadi. Avval bitta gul qo'shib ko'ring.")
 
     await message.answer(f"📊 Bazada jami {len(rows)} ta gul bor:")
     for r in rows:
