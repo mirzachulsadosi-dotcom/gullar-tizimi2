@@ -193,10 +193,13 @@ async def delete_callback(callback_query: types.CallbackQuery):
     )
 
 
-import asyncio
-
 async def main():
+    # Logging sozlamalari (xatolarni ko'rish uchun muhim)
+    logging.basicConfig(level=logging.INFO)
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("Bot to'xtatildi")
