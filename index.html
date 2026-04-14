@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mirzacho'l Texnikum</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        .days { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 15px 0; }
+        .day { padding: 10px; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 6px; text-align: center; cursor: pointer; }
+        .day.selected { background: #4caf50; color: white; }
+        .btn { width: 100%; padding: 15px; background: #4caf50; color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2 style="color: #2e7d32; text-align: center;">🌸 Gul Qo'shish</h2>
+        <input type="text" id="name" placeholder="Gul nomi">
+        <input type="text" id="resp" placeholder="Mas'ul shaxs">
+        <p style="font-size: 14px; margin-bottom: 5px;">Sug'orish kunlari:</p>
+        <div class="days">
+            <div class="day" onclick="this.classList.toggle('selected')">Dushanba</div>
+            <div class="day" onclick="this.classList.toggle('selected')">Seshanba</div>
+            <div class="day" onclick="this.classList.toggle('selected')">Chorshanba</div>
+            <div class="day" onclick="this.classList.toggle('selected')">Payshanba</div>
+            <div class="day" onclick="this.classList.toggle('selected')">Juma</div>
+            <div class="day" onclick="this.classList.toggle('selected')">Shanba</div>
+            <div class="day" onclick="this.classList.toggle('selected')">Yakshanba</div>
+        </div>
+        <button class="btn" onclick="send()">💾 Saqlash va QR olish</button>
+    </div>
+    <script>
+        let tg = window.Telegram.WebApp;
+        tg.expand();
+        function send() {
+            let n = document.getElementById('name').value;
+            let r = document.getElementById('resp').value;
+            let d = Array.from(document.querySelectorAll('.day.selected')).map(el => el.innerText).join(', ');
+            if(!n || !r) { alert("To'ldiring!"); return; }
+            tg.sendData(JSON.stringify({action: "add", name: n, resp: r, days: d}));
+            tg.close();
+        }
+    </script>
+</body>
+</html>
