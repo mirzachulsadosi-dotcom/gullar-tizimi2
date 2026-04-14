@@ -4,18 +4,36 @@
     <meta charset="UTF-8">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #f4f4f4; }
-        input { width: 100%; padding: 10px; margin: 10px 0; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; }
-        button { width: 100%; padding: 15px; background: #28a745; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
-        .day { display: inline-block; padding: 8px; margin: 4px; background: #ddd; border-radius: 5px; cursor: pointer; font-size: 12px; }
-        .day.active { background: #28a745; color: white; }
+        body { font-family: sans-serif; padding: 15px; background: #f0f2f5; }
+        .input-group { margin-bottom: 10px; }
+        label { display: block; font-size: 12px; color: #666; margin-bottom: 2px; }
+        input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 10px; box-sizing: border-box; }
+        .days { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0; }
+        .day { padding: 8px 12px; background: #fff; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; font-size: 12px; }
+        .day.active { background: #007bff; color: white; border-color: #007bff; }
+        button { width: 100%; padding: 15px; background: #28a745; color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; }
     </style>
 </head>
 <body>
-    <h3>Gullar Tizimi</h3>
-    <input type="text" id="n" placeholder="Gul nomi">
-    <input type="text" id="p" placeholder="Mas'ul tel (+998...)">
-    <div id="days">
+    <h3>🌸 Yangi gul biriktirish</h3>
+    
+    <div class="input-group">
+        <label>Gulning nomi</label>
+        <input type="text" id="flower_name" placeholder="Masalan: Atirgul">
+    </div>
+
+    <div class="input-group">
+        <label>Mas'ulning ismi va familiyasi</label>
+        <input type="text" id="full_name" placeholder="Ism Familiya">
+    </div>
+
+    <div class="input-group">
+        <label>Mas'ulning telefon raqami</label>
+        <input type="text" id="phone" placeholder="+998901234567">
+    </div>
+
+    <label>Sug'orish kunlari:</label>
+    <div class="days" id="days_box">
         <div class="day" onclick="this.classList.toggle('active')">Dushanba</div>
         <div class="day" onclick="this.classList.toggle('active')">Seshanba</div>
         <div class="day" onclick="this.classList.toggle('active')">Chorshanba</div>
@@ -24,29 +42,30 @@
         <div class="day" onclick="this.classList.toggle('active')">Shanba</div>
         <div class="day" onclick="this.classList.toggle('active')">Yakshanba</div>
     </div>
-    <button onclick="send()">SAQLASH</button>
+
+    <button onclick="saveData()">💾 TIZIMGA QO'SHISH</button>
 
     <script>
         let tg = window.Telegram.WebApp;
         tg.expand();
-        function send() {
-    let name = document.getElementById('n').value;
-    let phone = document.getElementById('p').value;
-    let d = Array.from(document.querySelectorAll('.day.active')).map(x => x.innerText).join(', ');
-    
-    if(!name || !phone) {
-        alert("Ma'lumotlarni to'ldiring!");
-        return;
-    }
-    
-    // MUHIM: resp_id deb yozilganiga ishonch hosil qiling
-    tg.sendData(JSON.stringify({
-        name: name, 
-        resp_id: phone, 
-        days: d
-    }));
-    tg.close();
-}
+
+        function saveData() {
+            let flower = document.getElementById('flower_name').value;
+            let name = document.getElementById('full_name').value;
+            let tel = document.getElementById('phone').value;
+            let activeDays = Array.from(document.querySelectorAll('.day.active')).map(x => x.innerText).join(', ');
+
+            if(!flower || !name || !tel) return alert("Barcha maydonlarni to'ldiring!");
+            if(!tel.startsWith('+')) return alert("Telefonni +998... formatida yozing!");
+
+            tg.sendData(JSON.stringify({
+                flower: flower,
+                resp_name: name,
+                resp_phone: tel,
+                days: activeDays
+            }));
+            tg.close();
+        }
     </script>
 </body>
 </html>
