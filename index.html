@@ -3,44 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mirzacho'l Texnikum</title>
+    <title>Gullar Nazorati</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
-        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        .days { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 15px 0; }
-        .day { padding: 10px; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 6px; text-align: center; cursor: pointer; }
-        .day.selected { background: #4caf50; color: white; }
-        .btn { width: 100%; padding: 15px; background: #4caf50; color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        body { font-family: sans-serif; background: #f0f2f5; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .card { background: white; width: 100%; max-width: 350px; padding: 25px; border-radius: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+        h2 { color: #2e7d32; text-align: center; margin-bottom: 20px; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; }
+        .days-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 15px 0; }
+        .day { padding: 10px; background: #f1f8e9; border: 1px solid #c8e6c9; border-radius: 8px; text-align: center; font-size: 13px; cursor: pointer; }
+        .day.active { background: #4caf50; color: white; }
+        .btn { width: 100%; padding: 15px; background: #4caf50; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 15px; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h2 style="color: #2e7d32; text-align: center;">🌸 Gul Qo'shish</h2>
-        <input type="text" id="name" placeholder="Gul nomi">
-        <input type="text" id="resp" placeholder="Mas'ul shaxs">
-        <p style="font-size: 14px; margin-bottom: 5px;">Sug'orish kunlari:</p>
-        <div class="days">
-            <div class="day" onclick="this.classList.toggle('selected')">Dushanba</div>
-            <div class="day" onclick="this.classList.toggle('selected')">Seshanba</div>
-            <div class="day" onclick="this.classList.toggle('selected')">Chorshanba</div>
-            <div class="day" onclick="this.classList.toggle('selected')">Payshanba</div>
-            <div class="day" onclick="this.classList.toggle('selected')">Juma</div>
-            <div class="day" onclick="this.classList.toggle('selected')">Shanba</div>
-            <div class="day" onclick="this.classList.toggle('selected')">Yakshanba</div>
+    <div class="card" id="form">
+        <h2>🌸 Gul Qo'shish</h2>
+        <input type="text" id="g_name" placeholder="Gulning nomi">
+        <input type="text" id="g_resp" placeholder="Mas'ul shaxs">
+        <div class="days-grid">
+            <div class="day" onclick="this.classList.toggle('active')">Dushanba</div>
+            <div class="day" onclick="this.classList.toggle('active')">Seshanba</div>
+            <div class="day" onclick="this.classList.toggle('active')">Chorshanba</div>
+            <div class="day" onclick="this.classList.toggle('active')">Payshanba</div>
+            <div class="day" onclick="this.classList.toggle('active')">Juma</div>
+            <div class="day" onclick="this.classList.toggle('active')">Shanba</div>
+            <div class="day" onclick="this.classList.toggle('active')">Yakshanba</div>
         </div>
-        <button class="btn" onclick="send()">💾 Saqlash va QR olish</button>
+        <button class="btn" onclick="send()">💾 KEYINGI BOSQICH</button>
     </div>
+
     <script>
         let tg = window.Telegram.WebApp;
         tg.expand();
+
         function send() {
-            let n = document.getElementById('name').value;
-            let r = document.getElementById('resp').value;
-            let d = Array.from(document.querySelectorAll('.day.selected')).map(el => el.innerText).join(', ');
-            if(!n || !r) { alert("To'ldiring!"); return; }
-            tg.sendData(JSON.stringify({action: "add", name: n, resp: r, days: d}));
+            let n = document.getElementById('g_name').value;
+            let r = document.getElementById('g_resp').value;
+            let d = Array.from(document.querySelectorAll('.day.active')).map(x => x.innerText).join(', ');
+            
+            if(!n || !r) { alert("Ma'lumotlarni to'ldiring!"); return; }
+            
+            // Botga ma'lumotni yuboramiz
+            tg.sendData(JSON.stringify({name: n, resp: r, days: d}));
             tg.close();
         }
     </script>
