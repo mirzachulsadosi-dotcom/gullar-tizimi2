@@ -1,44 +1,31 @@
 <!DOCTYPE html>
-<html lang="uz">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Skaner</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #000; color: white; margin: 0; }
-        .info { margin-bottom: 20px; text-align: center; padding: 0 20px; }
-        .scan-btn { padding: 15px 30px; background: #4caf50; color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; }
+        body { font-family: sans-serif; text-align: center; background: #f0f2f5; padding-top: 50px; }
+        .btn { padding: 20px 40px; font-size: 20px; background: #248bcf; color: white; border: none; border-radius: 15px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
-    <div class="info">
-        <h3>Gullarni tekshirish</h3>
-        <p>Kamerani ochish va QR kodni skanerlash uchun tugmani bosing</p>
-    </div>
-    <button class="scan-btn" onclick="startScan()">📷 KAMERANI OCHISH</button>
+    <h2>Gullar Nazorati Skaneri</h2>
+    <p>QR kodni o'qish uchun pastdagi tugmani bosing</p>
+    <button class="btn" onclick="openScanner()">📷 SKANERNI OCHISH</button>
 
     <script>
         let tg = window.Telegram.WebApp;
         tg.expand();
 
-        function startScan() {
-            // Telegramning ichki skanerini chaqirish
+        function openScanner() {
+            // Telegram ichki skanerini ochish buyrug'i
             tg.showScanQrPopup({
-                text: "Gulning QR kodini skanerlang"
+                text: "Gulning QR kodini kameraga qarating"
             }, function(text) {
-                // Skanerlanganda olingan linkdan ID ni ajratib olish (start=ID qismi)
-                let flowerId = text.split('=')[1]; 
-                
-                if(flowerId) {
-                    // Botga ID ni yuborish
-                    tg.sendData(flowerId);
-                    tg.closeScanQrPopup();
-                    tg.close();
-                } else {
-                    alert("Noto'g'ri QR kod!");
-                    return true; // Skanerni yopmaslik uchun
-                }
+                // Skanerlanganda olingan matnni (masalan: ...?start=15) botga yuborish
+                tg.sendData(text); 
+                tg.closeScanQrPopup(); // Skanerni yopish
+                tg.close(); // Mini Appni yopish
             });
         }
     </script>
