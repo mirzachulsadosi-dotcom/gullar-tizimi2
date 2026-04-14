@@ -145,3 +145,14 @@ if __name__ == '__main__':
         asyncio.run(main())
     except KeyboardInterrupt:
         pass
+        # Bazada bormi yoki Adminmi tekshirish
+    if message.from_user.id == ADMIN_ID:
+        kb.append([KeyboardButton(text="🌸 Mening gullarim")])
+        kb.append([KeyboardButton(text="➕ Gul qo'shish", web_app=WebAppInfo(url=ADD_URL))])
+        kb.append([KeyboardButton(text="📋 Barcha gullar")])
+        kb.append([KeyboardButton(text="🔍 Skaner", web_app=WebAppInfo(url=SCAN_URL))])
+    elif user:
+        kb.append([KeyboardButton(text="🌸 Mening gullarim")])
+        kb.append([KeyboardButton(text="🔍 Skaner", web_app=WebAppInfo(url=SCAN_URL))])
+    else:
+        kb.append([KeyboardButton(text="📱 Ro'yxatdan o'tish", request_contact=True)])
