@@ -84,7 +84,7 @@ async def get_contact(message: types.Message):
     cursor.execute("INSERT OR REPLACE INTO users (user_id, phone, name) VALUES (?, ?, ?)",
                    (message.from_user.id, phone, message.from_user.full_name))
     conn.commit()
-    await message.answer("✅ Ro'yxatdan o'tdingiz! Botdan foydalanishingiz mumkin. Qaytadan /start ni bosing")
+    await message.answer("✅ Ro'yxatdan o'tdingiz! Botdan foydalanishingiz mumkin.Qaytadan /start ni bosing")
 
 @dp.message(F.text == "🌸 Mening gullarim")
 async def my_flowers(message: types.Message):
