@@ -1,61 +1,42 @@
 <!DOCTYPE html>
-<html lang="uz">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: sans-serif; background: #f4f7f6; padding: 15px; }
-        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        .days { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin: 10px 0; }
-        .day { padding: 8px; background: #eee; border-radius: 5px; text-align: center; cursor: pointer; font-size: 13px; }
-        .day.active { background: #4caf50; color: white; }
-        .btn { width: 100%; padding: 15px; background: #4caf50; color: white; border: none; border-radius: 10px; font-weight: bold; margin-top: 10px; cursor: pointer; }
+        body { font-family: sans-serif; padding: 20px; background: #f4f4f4; }
+        input { width: 100%; padding: 10px; margin: 10px 0; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; background: #28a745; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
+        .day { display: inline-block; padding: 8px; margin: 4px; background: #ddd; border-radius: 5px; cursor: pointer; font-size: 12px; }
+        .day.active { background: #28a745; color: white; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h3>🌸 Yangi gul qo'shish</h3>
-        <input type="text" id="name" placeholder="Gul nomi">
-        <input type="text" id="resp" placeholder="Mas'ul ismi">
-        <input type="text" id="resp_id" placeholder="Mas'ul telefoni (+998...)">
-        <div class="days">
-            <div class="day" onclick="this.classList.toggle('active')">Dushanba</div>
-            <div class="day" onclick="this.classList.toggle('active')">Seshanba</div>
-            <div class="day" onclick="this.classList.toggle('active')">Chorshanba</div>
-            <div class="day" onclick="this.classList.toggle('active')">Payshanba</div>
-            <div class="day" onclick="this.classList.toggle('active')">Juma</div>
-            <div class="day" onclick="this.classList.toggle('active')">Shanba</div>
-            <div class="day" onclick="this.classList.toggle('active')">Yakshanba</div>
-        </div>
-        <button class="btn" onclick="sendDataToBot()">💾 SAQLASH</button>
+    <h3>Gullar Tizimi</h3>
+    <input type="text" id="n" placeholder="Gul nomi">
+    <input type="text" id="p" placeholder="Mas'ul tel (+998...)">
+    <div id="days">
+        <div class="day" onclick="this.classList.toggle('active')">Dushanba</div>
+        <div class="day" onclick="this.classList.toggle('active')">Seshanba</div>
+        <div class="day" onclick="this.classList.toggle('active')">Chorshanba</div>
+        <div class="day" onclick="this.classList.toggle('active')">Payshanba</div>
+        <div class="day" onclick="this.classList.toggle('active')">Juma</div>
+        <div class="day" onclick="this.classList.toggle('active')">Shanba</div>
+        <div class="day" onclick="this.classList.toggle('active')">Yakshanba</div>
     </div>
+    <button onclick="send()">SAQLASH</button>
 
     <script>
         let tg = window.Telegram.WebApp;
         tg.expand();
-
-        function sendDataToBot() {
-            const name = document.getElementById('name').value;
-            const resp = document.getElementById('resp').value;
-            const phone = document.getElementById('resp_id').value;
-            const selectedDays = Array.from(document.querySelectorAll('.day.active')).map(x => x.innerText).join(', ');
-
-            if (!name || !phone) {
-                alert("Gul nomi va telefon raqamini kiriting!");
-                return;
-            }
-
-            const data = {
-                name: name,
-                resp: resp,
-                resp_id: phone,
-                days: selectedDays
-            };
-
-            tg.sendData(JSON.stringify(data)); // Botga yuborish
-            tg.close(); // Mini Appni yopish
+        function send() {
+            let name = document.getElementById('n').value;
+            let phone = document.getElementById('p').value;
+            let d = Array.from(document.querySelectorAll('.day.active')).map(x => x.innerText).join(', ');
+            if(!name || !phone) return alert("To'ldiring!");
+            
+            tg.sendData(JSON.stringify({name: name, resp_id: phone, days: d}));
+            tg.close();
         }
     </script>
 </body>
