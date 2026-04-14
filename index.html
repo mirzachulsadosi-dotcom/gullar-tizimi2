@@ -2,68 +2,78 @@
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body { font-family: sans-serif; padding: 15px; background: #f0f2f5; }
-        .input-group { margin-bottom: 10px; }
-        label { display: block; font-size: 12px; color: #666; margin-bottom: 2px; }
-        input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 10px; box-sizing: border-box; }
-        .days { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0; }
-        .day { padding: 8px 12px; background: #fff; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; font-size: 12px; }
-        .day.active { background: #007bff; color: white; border-color: #007bff; }
-        button { width: 100%; padding: 15px; background: #28a745; color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; }
+        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-size: 13px; color: #555; margin-bottom: 5px; font-weight: bold; }
+        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; outline: none; }
+        input:focus { border-color: #007bff; }
+        .days { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 15px; }
+        .day { padding: 8px 12px; background: #eee; border-radius: 6px; cursor: pointer; font-size: 12px; transition: 0.3s; }
+        .day.active { background: #007bff; color: white; }
+        button { width: 100%; padding: 15px; background: #28a745; color: white; border: none; border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; }
     </style>
 </head>
 <body>
-    <h3>🌸 Yangi gul biriktirish</h3>
-    
-    <div class="input-group">
-        <label>Gulning nomi</label>
-        <input type="text" id="flower_name" placeholder="Masalan: Atirgul">
-    </div>
+    <div class="card">
+        <h3 style="margin-top:0">🌸 Gul biriktirish</h3>
+        
+        <div class="input-group">
+            <label>Gul nomi</label>
+            <input type="text" id="flower_name" placeholder="Masalan: Fikus">
+        </div>
 
-    <div class="input-group">
-        <label>Mas'ulning ismi va familiyasi</label>
-        <input type="text" id="full_name" placeholder="Ism Familiya">
-    </div>
+        <div class="input-group">
+            <label>Mas'ulning Ismi va Familiyasi</label>
+            <input type="text" id="resp_name" placeholder="Ali Valiyev">
+        </div>
 
-    <div class="input-group">
-        <label>Mas'ulning telefon raqami</label>
-        <input type="text" id="phone" placeholder="+998901234567">
-    </div>
+        <div class="input-group">
+            <label>Mas'ulning Telefon raqami</label>
+            <input type="tel" id="resp_phone" placeholder="+998901234567">
+        </div>
 
-    <label>Sug'orish kunlari:</label>
-    <div class="days" id="days_box">
-        <div class="day" onclick="this.classList.toggle('active')">Dushanba</div>
-        <div class="day" onclick="this.classList.toggle('active')">Seshanba</div>
-        <div class="day" onclick="this.classList.toggle('active')">Chorshanba</div>
-        <div class="day" onclick="this.classList.toggle('active')">Payshanba</div>
-        <div class="day" onclick="this.classList.toggle('active')">Juma</div>
-        <div class="day" onclick="this.classList.toggle('active')">Shanba</div>
-        <div class="day" onclick="this.classList.toggle('active')">Yakshanba</div>
-    </div>
+        <label>Sug'orish kunlari:</label>
+        <div class="days">
+            <div class="day" onclick="this.classList.toggle('active')">Dushanba</div>
+            <div class="day" onclick="this.classList.toggle('active')">Seshanba</div>
+            <div class="day" onclick="this.classList.toggle('active')">Chorshanba</div>
+            <div class="day" onclick="this.classList.toggle('active')">Payshanba</div>
+            <div class="day" onclick="this.classList.toggle('active')">Juma</div>
+            <div class="day" onclick="this.classList.toggle('active')">Shanba</div>
+            <div class="day" onclick="this.classList.toggle('active')">Yakshanba</div>
+        </div>
 
-    <button onclick="saveData()">💾 TIZIMGA QO'SHISH</button>
+        <button onclick="send()">💾 SAQLASH</button>
+    </div>
 
     <script>
         let tg = window.Telegram.WebApp;
         tg.expand();
 
-        function saveData() {
+        function send() {
             let flower = document.getElementById('flower_name').value;
-            let name = document.getElementById('full_name').value;
-            let tel = document.getElementById('phone').value;
-            let activeDays = Array.from(document.querySelectorAll('.day.active')).map(x => x.innerText).join(', ');
+            let name = document.getElementById('resp_name').value;
+            let phone = document.getElementById('resp_phone').value;
+            let selectedDays = Array.from(document.querySelectorAll('.day.active')).map(x => x.innerText).join(', ');
 
-            if(!flower || !name || !tel) return alert("Barcha maydonlarni to'ldiring!");
-            if(!tel.startsWith('+')) return alert("Telefonni +998... formatida yozing!");
+            if(!flower || !name || !phone) {
+                alert("Iltimos, barcha maydonlarni to'ldiring!");
+                return;
+            }
 
-            tg.sendData(JSON.stringify({
+            // Ma'lumotlarni JSON qilib yuboramiz
+            let data = {
                 flower: flower,
                 resp_name: name,
-                resp_phone: tel,
-                days: activeDays
-            }));
+                resp_phone: phone,
+                days: selectedDays
+            };
+
+            tg.sendData(JSON.stringify(data));
             tg.close();
         }
     </script>
