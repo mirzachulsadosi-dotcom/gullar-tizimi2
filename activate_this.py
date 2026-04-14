@@ -1,42 +1,47 @@
-from aiogram.client.default import DefaultBotProperties
 import asyncio
 import logging
+import sqlite3
+import json
+import io
+import qrcode
 from aiogram import Bot, Dispatcher, types, F
+from aiogram.client.default import DefaultBotProperties
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
-# Agar kodingizda boshqa maxsus importlar bo'lsa, ularni ham tekshiring
+from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import WebAppInfo, ReplyKeyboardMarkup, KeyboardButton, ContentType
 
+# --- SOZLAMALAR ---
 API_TOKEN = '8735925686:AAHnUxY2me2v7bO_NfJST_2jAIeSuNHKT3Y'
 ADMIN_ID = 1379794856
 ADD_URL = "https://mirzachulsadosi-dotcom.github.io/gullar-tizimi2/index.html?v=2"
 SCAN_URL = "https://mirzachulsadosi-dotcom.github.io/gullar-tizimi2/scanner.html"
 
+# --- LOGGING VA BOT ---
 logging.basicConfig(level=logging.INFO)
-bot = Bot(
-    token=API_TOKEN, 
-    default=DefaultBotProperties(parse_mode='HTML')
-)
+bot = Bot(token=API_TOKEN, default=DefaultBotProperties(parse_mode='HTML'))
+dp = Dispatcher(storage=MemoryStorage())
 
 # --- DATABASE ---
 conn = sqlite3.connect('texnikum_gullar.db', check_same_thread=False)
 cursor = conn.cursor()
 cursor.execute('CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, phone TEXT, name TEXT)')
-cursor.execute(
-    'CREATE TABLE IF NOT EXISTS flowers (id INTEGER PRIMARY KEY, name TEXT, r_name TEXT, r_phone TEXT, days TEXT, photo_id TEXT)')
+cursor.execute('CREATE TABLE IF NOT EXISTS flowers (id INTEGER PRIMARY KEY, name TEXT, r_name TEXT, r_phone TEXT, days TEXT, photo_id TEXT)')
 conn.commit()
-
 
 class Form(StatesGroup):
     waiting_for_photo = State()
 
+# --- HANDLERS ---
 
-# --- START ---
-@dp.message_handler(commands=['start'])
+# START buyrug'i
+@dp.message(F.text.startswith('/start'))
 async def cmd_start(message: types.Message):
-    args = message.get_args()
-    if args: # QR Skanerlanganda
-        cursor.execute("SELECT name, r_name, r_phone, days, photo_id FROM flowers WHERE id=?", (args,))
+    # QR koddan kelgan ID ni tekshirish
+    parts = message.text.split()
+    if len(parts) > 1:
+        f_id = parts[1]
+        cursor.execute("SELECT name, r_name, r_phone, days, photo_id FROM flowers WHERE id=?", (f_id,))
         res = cursor.fetchone()
         if res:
             caption = (f"🌸 <b>GUL MA'LUMOTI</b>\n\n"
@@ -49,21 +54,23 @@ async def cmd_start(message: types.Message):
     cursor.execute("SELECT phone FROM users WHERE user_id=?", (message.from_user.id,))
     user = cursor.fetchone()
 
-    markup = ReplyKeyboardMarkup(resize_keyboard=True)
+    # Tugmalarni aiogram 3.x uslubida yaratish
+    kb = []
     if not user:
-        markup.add(KeyboardButton("📱 Ro'yxatdan o'tish", request_contact=True))
+        kb.append([KeyboardButton(text="📱 Ro'yxatdan o'tish", request_contact=True)])
+        markup = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
         await message.answer("Xush kelibsiz! Botdan foydalanish uchun raqamingizni yuboring:", reply_markup=markup)
     else:
-        markup.add(KeyboardButton("🌸 Mening gullarim"))
+        kb.append([KeyboardButton(text="🌸 Mening gullarim")])
         if message.from_user.id == ADMIN_ID:
-            markup.add(KeyboardButton("➕ Gul qo'shish", web_app=WebAppInfo(url=ADD_URL)))
-            markup.add(KeyboardButton("📋 Barcha gullar"))
-        markup.add(KeyboardButton("🔍 Skaner", web_app=WebAppInfo(url=SCAN_URL)))
+            kb.append([KeyboardButton(text="➕ Gul qo'shish", web_app=WebAppInfo(url=ADD_URL))])
+            kb.append([KeyboardButton(text="📋 Barcha gullar")])
+        kb.append([KeyboardButton(text="🔍 Skaner", web_app=WebAppInfo(url=SCAN_URL))])
+        markup = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
         await message.answer("Asosiy menyu:", reply_markup=markup)
 
-
-# --- RO'YXATDAN O'TISH ---
-@dp.message_handler(content_types=ContentType.CONTACT)
+# Kontaktni qabul qilish
+@dp.message(F.contact)
 async def get_contact(message: types.Message):
     phone = message.contact.phone_number
     if not phone.startswith('+'): phone = '+' + phone
@@ -72,9 +79,8 @@ async def get_contact(message: types.Message):
     conn.commit()
     await message.answer("✅ Ro'yxatdan o'tdingiz! /start bosing.")
 
-
-# --- MENING GULLARIM (Xodim uchun) ---
-@dp.message_handler(lambda m: m.text == "🌸 Mening gullarim")
+# Xodimga biriktirilgan gullar
+@dp.message(F.text == "🌸 Mening gullarim")
 async def my_flowers(message: types.Message):
     cursor.execute("SELECT phone FROM users WHERE user_id=?", (message.from_user.id,))
     user = cursor.fetchone()
@@ -90,41 +96,23 @@ async def my_flowers(message: types.Message):
         for i, r in enumerate(rows, 1):
             text += (f"{i}. 🌸 <b>{r[0]}</b>\n"
                      f"   👤 Mas'ul: {r[1]}\n"
-                     f"   📞 Tel: {r[2]}\n"
                      f"   📅 Kunlar: {r[3]}\n\n")
         await message.answer(text)
 
-
-# --- WEB APP DATA (Gul qo'shish) ---
-@dp.message_handler(content_types=['web_app_data'])
+# Web App ma'lumotlarini qabul qilish
+@dp.message(F.web_app_data)
 async def handle_webapp_data(message: types.Message, state: FSMContext):
     raw_data = message.web_app_data.data
-
-    # 1. Skaner natijasini tekshirish (Agar ma'lumot JSON bo'lmasa)
-    if "start=" in raw_data:
-        f_id = raw_data.split("start=")[1]
-        cursor.execute("SELECT name, r_name, days, photo_id FROM flowers WHERE id=?", (f_id,))
-        res = cursor.fetchone()
-        if res:
-            await message.answer_photo(res[3],
-                                       caption=f"🌸 <b>Gul:</b> {res[0]}\n👤 <b>Mas'ul:</b> {res[1]}\n📅 <b>Kunlar:</b> {res[2]}")
-        else:
-            await message.answer("❌ Gul topilmadi.")
-        return
-
-    # 2. Yangi gul ma'lumotlarini tekshirish (JSON)
     try:
         data = json.loads(raw_data)
         await state.update_data(temp_data=data)
-        await Form.waiting_for_photo.set()
-        await message.answer(
-            f"✅ Ma'lumot olindi.\n🌸 Gul: {data['flower']}\n👤 Mas'ul: {data['resp_name']}\n\nEndi gulning <b>rasmini</b> yuboring:")
-    except json.JSONDecodeError:
-        await message.answer("⚠️ Mini App'dan noto'g'ri ma'lumot keldi.")
+        await state.set_state(Form.waiting_for_photo)
+        await message.answer(f"✅ Ma'lumot olindi.\n🌸 Gul: {data['flower']}\n👤 Mas'ul: {data['resp_name']}\n\nEndi rasm yuboring:")
+    except:
+        await message.answer("⚠️ Ma'lumotda xatolik!")
 
-
-# --- PHOTO VA MAS'ULGA HABAR ---
-@dp.message_handler(content_types=['photo'], state=Form.waiting_for_photo)
+# Rasmni qabul qilish va saqlash
+@dp.message(Form.waiting_for_photo, F.photo)
 async def process_photo(message: types.Message, state: FSMContext):
     s = await state.get_data()
     g = s['temp_data']
@@ -135,70 +123,47 @@ async def process_photo(message: types.Message, state: FSMContext):
     new_id = cursor.lastrowid
     conn.commit()
 
-    # Mas'ulga habar yuborish
-    cursor.execute("SELECT user_id FROM users WHERE phone=?", (g['resp_phone'],))
-    target = cursor.fetchone()
-    if target:
-        try:
-            await bot.send_photo(target[0], photo_id,
-                                 caption=f"🔔 <b>Sizga yangi gul biriktirildi!</b>\n🌸 Nomi: {g['flower']}\n📅 Sug'orish kunlari: {g['days']}")
-        except:
-            pass
-
-    # QR kod
+    # QR kod yaratish
     qr_link = f"https://t.me/{(await bot.get_me()).username}?start={new_id}"
     qr = qrcode.make(qr_link)
-    buf = io.BytesIO();
-    qr.save(buf, format='PNG');
+    buf = io.BytesIO()
+    qr.save(buf, format='PNG')
     buf.seek(0)
-    await message.answer_photo(buf, caption=f"✅ Saqlandi! ID: {new_id}")
-    await state.finish()
+    
+    file_input = types.BufferedInputFile(buf.read(), filename="qr.png")
+    await message.answer_photo(file_input, caption=f"✅ Saqlandi! ID: {new_id}\n\nQR-kodni chop etishingiz mumkin.")
+    await state.clear()
 
-
-# Barcha gullarni tugmalar bilan chiqarish
-@dp.message_handler(lambda m: m.text == "📋 Barcha gullar")
+# Admin uchun barcha gullar
+@dp.message(F.text == "📋 Barcha gullar")
 async def list_all_flowers(message: types.Message):
     if message.from_user.id != ADMIN_ID: return
-
     cursor.execute("SELECT id, name, r_name, r_phone, days FROM flowers")
     rows = cursor.fetchall()
-
-    if not rows:
-        return await message.answer("Bazada gullar yo'q.")
-
-    await message.answer("📋 <b>Barcha biriktirilgan gullar:</b>")
+    if not rows: return await message.answer("Bazada gullar yo'q.")
 
     for r in rows:
-        markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton(text=f"🗑 O'chirish", callback_data=f"del_{r[0]}"))
-
-        text = (f"🆔 ID: {r[0]}\n"
-                f"🌸 Gul: <b>{r[1]}</b>\n"
-                f"👤 Mas'ul: {r[2]}\n"
-                f"📞 Tel: {r[3]}\n"
-                f"📅 Kunlar: {r[4]}")
-
+        markup = types.InlineKeyboardMarkup(inline_keyboard=[
+            [types.InlineKeyboardButton(text="🗑 O'chirish", callback_data=f"del_{r[0]}")]
+        ])
+        text = f"🆔 ID: {r[0]}\n🌸 Gul: {r[1]}\n👤 Mas'ul: {r[2]}\n📞 Tel: {r[3]}\n📅 Kunlar: {r[4]}"
         await message.answer(text, reply_markup=markup)
 
-
-# O'chirish tugmasi bosilganda
-@dp.callback_query_handler(lambda c: c.data.startswith('del_'))
-async def delete_callback(callback_query: types.CallbackQuery):
-    f_id = callback_query.data.split('_')[1]
+# O'chirish (Callback)
+@dp.callback_query(F.data.startswith('del_'))
+async def delete_callback(callback: types.CallbackQuery):
+    f_id = callback.data.split('_')[1]
     cursor.execute("DELETE FROM flowers WHERE id = ?", (f_id,))
     conn.commit()
+    await callback.answer("O'chirildi ✅")
+    await callback.message.edit_text(text=f"❌ Gul o'chirildi (ID: {f_id})")
 
-    await bot.answer_callback_query(callback_query.id, text="O'chirildi ✅")
-    await bot.edit_message_text(
-        chat_id=callback_query.message.chat.id,
-        message_id=callback_query.message.message_id,
-        text=f"❌ Gul o'chirildi (ID: {f_id})"
-    )
-
-
+# BOTNI YURGIZISH
 async def main():
-    logging.basicConfig(level=logging.INFO)
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
