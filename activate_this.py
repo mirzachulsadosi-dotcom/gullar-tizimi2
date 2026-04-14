@@ -13,8 +13,10 @@ ADD_URL = "https://mirzachulsadosi-dotcom.github.io/gullar-tizimi2/index.html?v=
 SCAN_URL = "https://mirzachulsadosi-dotcom.github.io/gullar-tizimi2/scanner.html"
 
 logging.basicConfig(level=logging.INFO)
-bot = Bot(token=API_TOKEN, parse_mode="HTML")
-dp = Dispatcher(bot, storage=MemoryStorage())
+bot = Bot(
+    token=API_TOKEN, 
+    default=DefaultBotProperties(parse_mode='HTML')
+)
 
 # --- DATABASE ---
 conn = sqlite3.connect('texnikum_gullar.db', check_same_thread=False)
