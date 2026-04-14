@@ -30,14 +30,23 @@
         let tg = window.Telegram.WebApp;
         tg.expand();
         function send() {
-            let name = document.getElementById('n').value;
-            let phone = document.getElementById('p').value;
-            let d = Array.from(document.querySelectorAll('.day.active')).map(x => x.innerText).join(', ');
-            if(!name || !phone) return alert("To'ldiring!");
-            
-            tg.sendData(JSON.stringify({name: name, resp_id: phone, days: d}));
-            tg.close();
-        }
+    let name = document.getElementById('n').value;
+    let phone = document.getElementById('p').value;
+    let d = Array.from(document.querySelectorAll('.day.active')).map(x => x.innerText).join(', ');
+    
+    if(!name || !phone) {
+        alert("Ma'lumotlarni to'ldiring!");
+        return;
+    }
+    
+    // MUHIM: resp_id deb yozilganiga ishonch hosil qiling
+    tg.sendData(JSON.stringify({
+        name: name, 
+        resp_id: phone, 
+        days: d
+    }));
+    tg.close();
+}
     </script>
 </body>
 </html>
