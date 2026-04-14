@@ -1,5 +1,5 @@
 import logging, sqlite3, qrcode, io, json, asyncio
-from aiogram import Bot, Dispatcher, types, executor
+from aiogram import Bot, Dispatcher, types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
@@ -192,5 +192,10 @@ async def delete_callback(callback_query: types.CallbackQuery):
     )
 
 
+import asyncio
+
+async def main():
+    await dp.start_polling(bot)
+
 if __name__ == '__main__':
-    executor.start_polling(dp, skip_updates=True)
+    asyncio.run(main())
