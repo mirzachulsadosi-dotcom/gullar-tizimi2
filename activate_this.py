@@ -81,7 +81,7 @@ async def get_contact(message: types.Message):
 async def my_flowers(message: types.Message):
     cursor.execute("SELECT phone FROM users WHERE user_id=?", (message.from_user.id,))
     user = cursor.fetchone()
-    if not user: return await message.answer("Sizga biriktirilgan gullar topilmadi!")
+    if not user: return await message.answer("Sizga biriktirilgan gullar topilmadi")
 
     # Foydalanuvchi raqamining oxirgi 9 tasini olamiz (masalan: 943552023)
     user_phone = str(user[0])[-9:]
