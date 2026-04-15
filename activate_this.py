@@ -128,7 +128,7 @@ async def process_photo(message: types.Message, state: FSMContext):
     if target:
         try:
             await bot.send_photo(target[0], photo_id, 
-                                 caption=f"🔔 <b>Sizga yangi gul biriktirildi!</b>\n\n🌸 Nomi: {g['flower']}\n📅 Sug'orish kunlari: {g['days']}")
+                                 caption=f"🔔 <b>Sizga yangi gul biriktirildi!</b>\n\n🌸 Nomi: {g['flower']}\n📅 Kunlar: {g['days']}")
         except:
             pass # Agar foydalanuvchi botni bloklagan bo'lsa
 
@@ -144,7 +144,7 @@ async def list_all_flowers(message: types.Message):
     if not rows: return await message.answer("Bazada gullar yo'q.")
     
     for r in rows:
-        await message.answer(f"🆔 ID: {r[0]}\n🌸 Gul: {r[1]}\n👤 Mas'ul: {r[2]}\n📅 Sug'orish kunlari: {r[3]}")
+        await message.answer(f"🆔 ID: {r[0]}\n🌸 Gul: {r[1]}\n👤 Mas'ul: {r[2]}\n📅 Kunlar: {r[3]}")
 
 async def main():
     await start_web_server()
