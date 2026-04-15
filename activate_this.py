@@ -50,7 +50,6 @@ class Form(StatesGroup):
 # --- START ---
 @dp.message(F.text.startswith('/start'))
 async def cmd_start(message: types.Message):
-    # QR orqali kelganda gul ma'lumotini chiqarish
     parts = message.text.split()
     if len(parts) > 1:
         f_id = parts[1]
@@ -64,19 +63,17 @@ async def cmd_start(message: types.Message):
     user = cursor.fetchone()
 
     kb = []
-    # Admin tekshiruvi: Agar siz Admin bo'lsangiz, ro'yxatdan o'tishni so'ramaydi
-    if message.from_user.id == ADMIN_ID:
+    if message.from_user.id == ADMIN_ID or user:
         kb.append([KeyboardButton(text="🌸 Mening gullarim")])
-        kb.append([KeyboardButton(text="➕ Gul qo'shish", web_app=WebAppInfo(url=ADD_URL))])
-        kb.append([KeyboardButton(text="📋 Barcha gullar"), KeyboardButton(text="🔍 Skaner", web_app=WebAppInfo(url=SCAN_URL))])
-    elif user:
-        kb.append([KeyboardButton(text="🌸 Mening gullarim")])
+        if message.from_user.id == ADMIN_ID:
+            kb.append([KeyboardButton(text="➕ Gul qo'shish", web_app=WebAppInfo(url=ADD_URL))])
+            kb.append([KeyboardButton(text="📋 Barcha gullar")])
         kb.append([KeyboardButton(text="🔍 Skaner", web_app=WebAppInfo(url=SCAN_URL))])
     else:
         kb.append([KeyboardButton(text="📱 Ro'yxatdan o'tish", request_contact=True)])
     
     markup = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
-    await message.answer("Mirzacho'l tuman 2-son texnikumi botiga xush kelibsiz!", reply_markup=markup)
+    await message.answer("Xush kelibsiz!", reply_markup=markup)
 
 # --- RO'YXATDAN O'TISH ---
 @dp.message(F.contact)
@@ -85,41 +82,16 @@ async def get_contact(message: types.Message):
     cursor.execute("INSERT OR REPLACE INTO users (user_id, phone, name) VALUES (?, ?, ?)",
                    (message.from_user.id, phone, message.from_user.full_name))
     conn.commit()
-    # Muhim: Ro'yxatdan o'tgach darhol menyuni yangilash uchun startni qayta chaqiramiz
     await message.answer("✅ Ro'yxatdan o'tdingiz!")
     await cmd_start(message)
 
-# --- MENING GULLARIM ---
-@dp.message(F.text == "🌸 Mening gullarim")
-async def my_flowers(message: types.Message):
-    cursor.execute("SELECT phone FROM users WHERE user_id=?", (message.from_user.id,))
-    user = cursor.fetchone()
-    
-    # Agar Admin bo'lsangiz va bazada raqamingiz bo'lmasa, admin deb davom etadi
-    if not user and message.from_user.id != ADMIN_ID:
-        return await message.answer("Avval ro'yxatdan o'ting!")
-
-    # Admin bo'lsa raqami yo'q bo'lishi mumkin, shuning uchun tekshiramiz
-    search_phone = str(user[0])[-9:] if user else "ADMIN_NO_PHONE"
-    
-    cursor.execute("SELECT name, days FROM flowers WHERE r_phone LIKE ?", (f"%{search_phone}",))
-    rows = cursor.fetchall()
-
-    if not rows:
-        await message.answer("Sizga biriktirilgan gullar topilmadi.")
-    else:
-        text = "📋 <b>Sizga biriktirilgan gullar:</b>\n\n"
-        for i, r in enumerate(rows, 1):
-            text += f"{i}. 🌸 {r[0]} | 💧 Sug'orish kunlari: {r[1]}\n"
-        await message.answer(text)
-
-# --- GUL QO'SHISH VA QR KOD ---
+# --- GUL QO'SHISH ---
 @dp.message(F.web_app_data)
 async def handle_webapp_data(message: types.Message, state: FSMContext):
     data = json.loads(message.web_app_data.data)
     await state.update_data(temp_data=data)
     await state.set_state(Form.waiting_for_photo)
-    await message.answer(f"✅ Ma'lumot olindi.\n🌸 Gul: {data['flower']}\n👤 Mas'ul: {data['resp_name']}\n\nEndi rasm yuboring:")
+    await message.answer(f"🌸 Gul: {data['flower']}\n👤 Mas'ul: {data['resp_name']}\n\nEndi rasm yuboring:")
 
 @dp.message(Form.waiting_for_photo, F.photo)
 async def process_photo(message: types.Message, state: FSMContext):
@@ -133,25 +105,23 @@ async def process_photo(message: types.Message, state: FSMContext):
     new_id = cursor.lastrowid
     conn.commit()
 
-    # --- QR KOD YARATISH (TUZATILDI) ---
+    # --- QR KOD (Eng xavfsiz usul) ---
     try:
         qr_link = f"https://t.me/{(await bot.get_me()).username}?start={new_id}"
-        qr = qrcode.QRCode(version=1, box_size=10, border=5)
-        qr.add_data(qr_link)
-        qr.make(fit=True)
-        img = qr.make_image(fill_color="black", back_color="white")
+        qr_img = qrcode.make(qr_link)
         
         bio = io.BytesIO()
-        bio.name = 'qr.png'
-        img.save(bio, 'PNG')
+        qr_img.save(bio)
         bio.seek(0)
         
-        await message.answer_photo(BufferedInputFile(bio.read(), filename="qr.png"), 
-                                   caption=f"✅ Gul saqlandi! ID: {new_id}\n\nQR kodni chop etib gulga yopishtirishingiz mumkin.")
+        await message.answer_photo(
+            BufferedInputFile(bio.read(), filename="qr.png"), 
+            caption=f"✅ Gul saqlandi! ID: {new_id}\n💧 Sug'orish kunlari: {g['days']}"
+        )
     except Exception as e:
-        await message.answer(f"✅ Gul saqlandi, lekin QR kod yaratishda xato: {e}")
+        await message.answer(f"✅ Saqlandi, lekin QR xatosi: {e}")
 
-    # Mas'ulga xabar yuborish
+    # Mas'ulga xabarnoma
     search_phone = resp_phone[-9:]
     cursor.execute("SELECT user_id FROM users WHERE phone LIKE ?", (f"%{search_phone}",))
     target = cursor.fetchone()
@@ -162,6 +132,34 @@ async def process_photo(message: types.Message, state: FSMContext):
         except: pass
 
     await state.clear()
+
+# --- MENING GULLARIM ---
+@dp.message(F.text == "🌸 Mening gullarim")
+async def my_flowers(message: types.Message):
+    cursor.execute("SELECT phone FROM users WHERE user_id=?", (message.from_user.id,))
+    user = cursor.fetchone()
+    search_phone = str(user[0])[-9:] if user else "000"
+    
+    cursor.execute("SELECT name, days FROM flowers WHERE r_phone LIKE ?", (f"%{search_phone}",))
+    rows = cursor.fetchall()
+
+    if not rows:
+        await message.answer("Sizga biriktirilgan gullar topilmadi.")
+    else:
+        text = "📋 <b>Sizga biriktirilgan gullar:</b>\n\n"
+        for i, r in enumerate(rows, 1):
+            text += f"{i}. 🌸 {r[0]} | 💧 Sug'orish kunlari: {r[1]}\n"
+        await message.answer(text)
+
+# --- BARCHA GULLAR ---
+@dp.message(F.text == "📋 Barcha gullar")
+async def list_all_flowers(message: types.Message):
+    if message.from_user.id != ADMIN_ID: return
+    cursor.execute("SELECT id, name, r_name, days FROM flowers")
+    rows = cursor.fetchall()
+    if not rows: return await message.answer("Bazada gullar yo'q.")
+    for r in rows:
+        await message.answer(f"🆔 ID: {r[0]}\n🌸 Gul: {r[1]}\n👤 Mas'ul: {r[2]}\n💧 Sug'orish kunlari: {r[3]}")
 
 async def main():
     await start_web_server()
