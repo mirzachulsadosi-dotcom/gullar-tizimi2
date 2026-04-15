@@ -32,12 +32,11 @@ async def start_web_server():
     site = web.TCPSite(runner, '0.0.0.0', port)
     await site.start()
 
-# --- BOT ---
+# --- BOT VA DATABASE ---
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=API_TOKEN, default=DefaultBotProperties(parse_mode='HTML'))
 dp = Dispatcher(storage=MemoryStorage())
 
-# --- DATABASE ---
 conn = sqlite3.connect('texnikum_gullar.db', check_same_thread=False)
 cursor = conn.cursor()
 cursor.execute('CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, phone TEXT, name TEXT)')
@@ -47,35 +46,35 @@ conn.commit()
 class Form(StatesGroup):
     waiting_for_photo = State()
 
-# --- START (QR SKANERNI QABUL QILISH QISMI BILAN) ---
+# --- START (QR SKANERNI TANISH QISMI) ---
 @dp.message(F.text.startswith('/start'))
 async def cmd_start(message: types.Message):
-    # MUHIM: QR kod skanerlanganda ishlaydigan qism
     args = message.text.split()
+    
+    # AGAR QR KODDAN KELGAN BO'LSA (masalan: /start 5)
     if len(args) > 1:
         flower_id = args[1]
+        logging.info(f"QR Skanerlandi: ID {flower_id}")
         cursor.execute("SELECT name, r_name, r_phone, days, photo_id FROM flowers WHERE id=?", (flower_id,))
         res = cursor.fetchone()
+        
         if res:
             caption = (f"🌸 <b>GUL MA'LUMOTI (ID: {flower_id})</b>\n\n"
                        f"📌 Nomi: {res[0]}\n👤 Mas'ul: {res[1]}\n📞 Tel: {res[2]}\n"
                        f"💧 Sug'orish kunlari: {res[3]}")
             return await message.answer_photo(res[4], caption=caption)
         else:
-            return await message.answer("⚠️ Kechirasiz, ushbu ID bo'yicha gul topilmadi.")
+            return await message.answer(f"⚠️ Kechirasiz, {flower_id}-raqamli gul bazadan topilmadi.")
 
-    # Oddiy start bosilganda
+    # ODDIY START BOSILGANDA
     cursor.execute("SELECT phone FROM users WHERE user_id=?", (message.from_user.id,))
     user = cursor.fetchone()
-
     kb = []
-    # Admin bo'lsa barcha tugmalar chiqadi
-    if message.from_user.id == ADMIN_ID:
+    if message.from_user.id == ADMIN_ID or user:
         kb.append([KeyboardButton(text="🌸 Mening gullarim")])
-        kb.append([KeyboardButton(text="➕ Gul qo'shish", web_app=WebAppInfo(url=ADD_URL))])
-        kb.append([KeyboardButton(text="📋 Barcha gullar"), KeyboardButton(text="🔍 Skaner", web_app=WebAppInfo(url=SCAN_URL))])
-    elif user:
-        kb.append([KeyboardButton(text="🌸 Mening gullarim")])
+        if message.from_user.id == ADMIN_ID:
+            kb.append([KeyboardButton(text="➕ Gul qo'shish", web_app=WebAppInfo(url=ADD_URL))])
+            kb.append([KeyboardButton(text="📋 Barcha gullar")])
         kb.append([KeyboardButton(text="🔍 Skaner", web_app=WebAppInfo(url=SCAN_URL))])
     else:
         kb.append([KeyboardButton(text="📱 Ro'yxatdan o'tish", request_contact=True)])
@@ -83,7 +82,7 @@ async def cmd_start(message: types.Message):
     markup = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
     await message.answer("Mirzacho'l tuman 2-son texnikumi botiga xush kelibsiz!", reply_markup=markup)
 
-# --- RO'YXATDAN O'TISH ---
+# --- QOLGAN FUNKSIYALAR ---
 @dp.message(F.contact)
 async def get_contact(message: types.Message):
     phone = str(message.contact.phone_number).replace("+", "")
@@ -93,7 +92,6 @@ async def get_contact(message: types.Message):
     await message.answer("✅ Ro'yxatdan o'tdingiz!")
     await cmd_start(message)
 
-# --- GUL QO'SHISH ---
 @dp.message(F.web_app_data)
 async def handle_webapp_data(message: types.Message, state: FSMContext):
     data = json.loads(message.web_app_data.data)
@@ -113,8 +111,10 @@ async def process_photo(message: types.Message, state: FSMContext):
     new_id = cursor.lastrowid
     conn.commit()
 
-    # QR KOD YARATISH
-    qr_link = f"https://t.me/{(await bot.get_me()).username}?start={new_id}"
+    # QR KOD YARATISH (Link formatini to'g'irlash)
+    bot_user = await bot.get_me()
+    qr_link = f"https://t.me/{bot_user.username}?start={new_id}"
+    
     qr_img = qrcode.make(qr_link)
     bio = io.BytesIO()
     qr_img.save(bio, "PNG")
@@ -122,54 +122,18 @@ async def process_photo(message: types.Message, state: FSMContext):
     
     await message.answer_photo(
         BufferedInputFile(bio.read(), filename="qr.png"), 
-        caption=f"✅ Gul saqlandi! ID: {new_id}\n💧 Sug'orish kunlari: {g['days']}"
+        caption=f"✅ Gul saqlandi! ID: {new_id}\n💧 Sug'orish kunlari: {g['days']}\n\nUshbu QR kodni gulga yopishtiring."
     )
-
-    # Mas'ulga xabarnoma
-    search_phone = resp_phone[-9:]
-    cursor.execute("SELECT user_id FROM users WHERE phone LIKE ?", (f"%{search_phone}",))
-    target = cursor.fetchone()
-    if target:
-        try:
-            await bot.send_photo(target[0], photo_id, 
-                                 caption=f"🔔 <b>Sizga yangi gul biriktirildi!</b>\n\n🌸 Nomi: {g['flower']}\n💧 Sug'orish kunlari: {g['days']}")
-        except: pass
     await state.clear()
 
-# --- BARCHA GULLAR (Tuzatilgan) ---
 @dp.message(F.text == "📋 Barcha gullar")
 async def list_all_flowers(message: types.Message):
-    if message.from_user.id != ADMIN_ID:
-        return await message.answer("⚠️ Bu bo'lim faqat adminlar uchun.")
-
+    if message.from_user.id != ADMIN_ID: return
     cursor.execute("SELECT id, name, r_name, days FROM flowers")
     rows = cursor.fetchall()
-    
-    if not rows:
-        return await message.answer("📭 Bazada hozircha gullar yo'q.")
-    
-    await message.answer(f"📊 Jami gullar soni: {len(rows)} ta")
+    if not rows: return await message.answer("Bazadan gullar topilmadi.")
     for r in rows:
-        await message.answer(f"🆔 ID: {r[0]}\n🌸 Gul: <b>{r[1]}</b>\n👤 Mas'ul: {r[2]}\n💧 Sug'orish kunlari: {r[3]}")
-
-# --- MENING GULLARIM ---
-@dp.message(F.text == "🌸 Mening gullarim")
-async def my_flowers(message: types.Message):
-    cursor.execute("SELECT phone FROM users WHERE user_id=?", (message.from_user.id,))
-    user = cursor.fetchone()
-    if not user: return await message.answer("Avval ro'yxatdan o'ting!")
-
-    search_phone = str(user[0])[-9:]
-    cursor.execute("SELECT name, days FROM flowers WHERE r_phone LIKE ?", (f"%{search_phone}",))
-    rows = cursor.fetchall()
-
-    if not rows:
-        await message.answer("Sizga biriktirilgan gullar topilmadi.")
-    else:
-        text = "📋 <b>Sizga biriktirilgan gullar:</b>\n\n"
-        for i, r in enumerate(rows, 1):
-            text += f"{i}. 🌸 {r[0]} | 💧 Sug'orish kunlari: {r[1]}\n"
-        await message.answer(text)
+        await message.answer(f"🆔 ID: {r[0]}\n🌸 Gul: {r[1]}\n👤 Mas'ul: {r[2]}\n💧 Sug'orish kunlari: {r[3]}")
 
 async def main():
     await start_web_server()
